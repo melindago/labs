@@ -1,3 +1,5 @@
+import json
+
 class Item:
     
     def __init__(self, name, description='', rarity='common'):
@@ -27,6 +29,21 @@ class Item:
             return f"🌟 {self.name} (Legendary Item) 🌟"
         return f"Item(name={self.name}, description={self.description}, rarity={self.rarity})"
 
+    def to_json(self):
+        """Convert Item object to a JSON-encodable dictionary."""
+        return {
+            'name': self.name,
+            'description': self.description,
+            'rarity': self.rarity,
+            'item_type': 'item' 
+        }   
+    @classmethod
+    def from_json(cls, data):
+        """Create an Item object from JSON data."""
+        try:
+            return cls(data['name'], data.get('description', ''), data.get('rarity', 'common'))
+        except KeyError as e:
+            raise ValueError(f"Missing key in Item data: {e}")
 
 class Weapon(Item):
     def __init__(self, name, description='', rarity='common', damage=0, weapon_type='sword'):
@@ -69,6 +86,27 @@ class Weapon(Item):
     def _shoot(self):
         return f"{self.name} shoots with {self.damage} damage!"
     
+    def to_json(self):
+        """Convert Weapon object to a JSON-encodable dictionary."""
+        data = super().to_json()
+        data.update({
+            'damage': self.damage,
+            'weapon_type': self.weapon_type,
+            'item_type': 'weapon'
+        })
+        return data
+    @classmethod
+    def from_json(cls, data):
+        """Create a Weapon object from JSON data."""
+        try:
+            return cls(
+                data['name'], 
+                data.get('description', ''), 
+                data.get('rarity', 'common')
+            )
+        except KeyError as e:
+            raise ValueError(f"Missing key in Weapon data: {e}")
+    
 class Shield(Item):
     def __init__(self, name, description='', rarity='common', defense=0, broken=False):
         super().__init__(name, description, rarity)
@@ -90,14 +128,36 @@ class Shield(Item):
             return f"{self.name} is not equipped and cannot be used."
         return f"{self.name} is used, blocking {self.defense * self.defense_modifier} damage."
 
+    def to_json(self):
+        """Convert Shield object to a JSON-encodable dictionary."""
+        data = super().to_json()
+        data.update({
+            'defense': self.defense,
+            'item_type': 'shield'
+        })
+        return data
+
+    @classmethod
+    def from_json(cls, data):
+        """Create a Shield object from JSON data."""
+        try:
+            return cls(
+                data['name'], 
+                data.get('description', ''), 
+                data.get('rarity', 'common'),
+                data.get('defense', 0)
+            )
+        except KeyError as e:
+            raise ValueError(f"Missing key in Shield data: {e}")
 
 class Potion(Item):
-    def __init__(self, name, description='', rarity='common', potion_type='HP', value=0, effective_time=0):
+    def __init__(self, name, description='', rarity='common', potion_type='HP', value=0, effective_time=0, potency=0):
         super().__init__(name, description, rarity)
         self.potion_type = potion_type
         self.value = value
         self.effective_time = effective_time
         self.empty = False
+        self.potency = potency
 
     def use(self):
         if self.empty:
@@ -111,6 +171,27 @@ class Potion(Item):
     def from_ability(cls, name, owner, potion_type):
         return cls(name, potion_type=potion_type, value=50, effective_time=30, rarity='common')
 
+    def to_json(self):
+        """Convert Potion object to a JSON-encodable dictionary."""
+        data = super().to_json()
+        data.update({
+            'potency': self.potency,
+            'item_type': 'potion'
+        })
+        return data
+
+    @classmethod
+    def from_json(cls, data):
+        """Create a Potion object from JSON data."""
+        try:
+            return cls(
+                data['name'], 
+                data.get('description', ''), 
+                data.get('rarity', 'common'),
+                data.get('potency', 0)
+            )
+        except KeyError as e:
+            raise ValueError(f"Missing key in Potion data: {e}")
 
 if __name__ == "__main__":
     # Create Weapon object
@@ -169,6 +250,33 @@ class Inventory:
     def __contains__(self, item):
         return item in self.items
 
+    def to_json(self):
+        """Convert Inventory and its items to a JSON-encodable dictionary."""
+        return {
+            'items': [item.to_json() for item in self.items]
+        }
+    @classmethod
+    def from_json(cls, data):
+        """Create an Inventory object from JSON data."""
+        inventory = cls()
+        try:
+            for item_data in data['items']:
+                item_type = item_data.get('item_type')
+                if item_data['item_type'] == 'weapon':
+                    inventory.add_item(Weapon.from_json(item_data))
+                elif item_data['item_type'] == 'item':
+                    inventory.add_item(Item.from_json(item_data))
+                elif item_type == 'shield':
+                    inventory.add_item(Shield.from_json(item_data))
+                else:
+                    inventory.add_item(Item.from_json(item_data))
+        except KeyError as e:
+            raise ValueError(f"Missing key in Inventory data: {e}")
+        return inventory
+    def serialize_to_json(obj, file_path):
+        """Serialize custom object to JSON and save to file."""
+        with open(file_path, 'w') as file:
+           json.dump(obj, file, default=lambda o: o.to_json())
 
 
 if __name__ == "__main__":
@@ -176,8 +284,7 @@ if __name__ == "__main__":
     muramasa = Weapon(name="Muramasa", description="A double-handed katana.", rarity="legendary", damage=580, weapon_type="double-handed")
     gungnir = Weapon(name="Gungnir", description="A legendary spear.", rarity="legendary", damage=290, weapon_type="pike")
     belthronding = Weapon(name="Belthronding", description="A legendary bow.", rarity="legendary", damage=500, weapon_type="ranged")
-
-    
+  
     inventory = Inventory(owner="Beleg")
     inventory.add_item(master_sword)
     inventory.add_item(muramasa)
@@ -211,137 +318,6 @@ if __name__ == "__main__":
     inventory.remove_item(muramasa)
     inventory.view()
 
-import json
-class Item:
-    def __init__(self, name, description='', rarity='common'):
-        self.name = name
-        self.description = description
-        self.rarity = rarity
-    def to_json(self):
-        """Convert Item object to a JSON-encodable dictionary."""
-        return {
-            'name': self.name,
-            'description': self.description,
-            'rarity': self.rarity,
-            'item_type': 'item' 
-        }   
-    @classmethod
-    def from_json(cls, data):
-        """Create an Item object from JSON data."""
-        try:
-            return cls(data['name'], data.get('description', ''), data.get('rarity', 'common'))
-        except KeyError as e:
-            raise ValueError(f"Missing key in Item data: {e}")
-class Weapon(Item):
-    def __init__(self, name, description='', rarity='common', damage=0, weapon_type='sword'):
-        super().__init__(name, description, rarity)
-        self.damage = damage
-        self.weapon_type = weapon_type
-    def to_json(self):
-        """Convert Weapon object to a JSON-encodable dictionary."""
-        data = super().to_json()
-        data.update({
-            'damage': self.damage,
-            'weapon_type': self.weapon_type,
-            'item_type': 'weapon'
-        })
-        return data
-    @classmethod
-    def from_json(cls, data):
-        """Create a Weapon object from JSON data."""
-        try:
-            return cls(
-                data['name'], 
-                data.get('description', ''), 
-                data.get('rarity', 'common')
-            )
-        except KeyError as e:
-            raise ValueError(f"Missing key in Weapon data: {e}")
-class Potion(Item):
-    def __init__(self, name, description='', rarity='common', potency=0):
-        super().__init__(name, description, rarity)
-        self.potency = potency
-
-    def to_json(self):
-        """Convert Potion object to a JSON-encodable dictionary."""
-        data = super().to_json()
-        data.update({
-            'potency': self.potency,
-            'item_type': 'potion'
-        })
-        return data
-
-    @classmethod
-    def from_json(cls, data):
-        """Create a Potion object from JSON data."""
-        try:
-            return cls(
-                data['name'], 
-                data.get('description', ''), 
-                data.get('rarity', 'common'),
-                data.get('potency', 0)
-            )
-        except KeyError as e:
-            raise ValueError(f"Missing key in Potion data: {e}")
-class Shield(Item):
-    def __init__(self, name, description='', rarity='common', defense=0):
-        super().__init__(name, description, rarity)
-        self.defense = defense
-
-    def to_json(self):
-        """Convert Shield object to a JSON-encodable dictionary."""
-        data = super().to_json()
-        data.update({
-            'defense': self.defense,
-            'item_type': 'shield'
-        })
-        return data
-
-    @classmethod
-    def from_json(cls, data):
-        """Create a Shield object from JSON data."""
-        try:
-            return cls(
-                data['name'], 
-                data.get('description', ''), 
-                data.get('rarity', 'common'),
-                data.get('defense', 0)
-            )
-        except KeyError as e:
-            raise ValueError(f"Missing key in Shield data: {e}")       
-class Inventory:
-    def __init__(self):
-        self.items = []
-    def add_item(self, item):
-        self.items.append(item)
-    def to_json(self):
-        """Convert Inventory and its items to a JSON-encodable dictionary."""
-        return {
-            'items': [item.to_json() for item in self.items]
-        }
-    @classmethod
-    def from_json(cls, data):
-        """Create an Inventory object from JSON data."""
-        inventory = cls()
-        try:
-            for item_data in data['items']:
-                item_type = item_data.get('item_type')
-                if item_data['item_type'] == 'weapon':
-                    inventory.add_item(Weapon.from_json(item_data))
-                elif item_data['item_type'] == 'item':
-                    inventory.add_item(Item.from_json(item_data))
-                elif item_type == 'shield':
-                    inventory.add_item(Shield.from_json(item_data))
-                else:
-                    inventory.add_item(Item.from_json(item_data))
-        except KeyError as e:
-            raise ValueError(f"Missing key in Inventory data: {e}")
-        return inventory
-
-def serialize_to_json(obj, file_path):
-    """Serialize custom object to JSON and save to file."""
-    with open(file_path, 'w') as file:
-        json.dump(obj, file, default=lambda o: o.to_json())
 if __name__ == "__main__":       
     inv = Inventory()
     inv.add_item(Weapon("Sword", "A sharp blade", "rare", 50, "sword"))
