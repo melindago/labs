@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>APOD History</title>
+</head>
+<body>
+    <h1>Search APOD by Date</h1>
+    <form method="POST">
+        <label for="date">Select a date (after June 16, 1995):</label>
+        <input type="date" id="date" name="date" required>
+        <button type="submit">Submit</button>
+    </form>
+    {% if data %}
+        <h2>APOD for {{ data.date }}</h2>
+        <img src="{{ data.url }}" alt="APOD Image">
+        <p>{{ data.explanation }}</p>
+        <p>Copyright: {{ data.copyright if data.copyright else 'Public Domain' }}</p>
+    {% endif %}
+    <a href="/">Back to Home Page</a>
+</body>
+</html>

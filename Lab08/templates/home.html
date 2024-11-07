@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>APOD Home</title>
+</head>
+<body>
+    <h1>NASA Astronomy Picture of the Day</h1>
+    {% if data %}
+        <p>Date: {{ data.date }}</p>
+        <img src="{{ data.url }}" alt="APOD Image">
+        <p>{{ data.explanation }}</p>
+        <p>Copyright: {{ data.copyright if data.copyright else 'Public Domain' }}</p>
+    {% endif %}
+    <a href="/history">Go to History Page</a>
+</body>
+</html>
